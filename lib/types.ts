@@ -1,0 +1,27 @@
+export interface Trip {
+  id: string
+  user_id: string
+  destination: string
+  hotel_name: string | null
+  check_in: string
+  check_out: string
+  preferences: string | null
+  created_at: string
+}
+
+export type SuggestionType = 'activity' | 'restaurant' | 'tip'
+
+export interface Suggestion {
+  type: SuggestionType
+  name: string
+  description: string
+  timing: string
+  location: string
+  price_range: string
+  why: string
+}
+
+export interface SuggestionsResponse {
+  overview: string
+  suggestions: Suggestion[]
+}
