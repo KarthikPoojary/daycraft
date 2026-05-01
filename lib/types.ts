@@ -20,6 +20,8 @@ export interface Suggestion {
   location: string
   price_range: string
   why: string
+  duration: string
+  travel_time: string
 }
 
 export interface SuggestionsResponse {

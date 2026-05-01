@@ -44,7 +44,9 @@ Return ONLY a valid JSON object — no markdown fences, no extra text — with t
       "timing": "Best time to go (e.g. Morning, Evening, Full Day, Weekdays)",
       "location": "Neighborhood or street",
       "price_range": "Free | $ | $$ | $$$",
-      "why": "One short phrase on why it fits their preferences"
+      "why": "One short phrase on why it fits their preferences",
+      "duration": "Estimated time to spend here (e.g. 2 hours, 45 min, Half day)",
+      "travel_time": "Estimated travel time from hotel or previous stop (e.g. 10 min by foot, 20 min by car)"
     }
   ]
 }

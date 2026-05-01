@@ -221,7 +221,7 @@ export default function TripForm({ trips: initialTrips }: { trips: Trip[] }) {
       )}
 
       {suggestions && !loading && (
-        <SuggestionCards data={suggestions} destination={activeDestination} />
+        <SuggestionCards data={suggestions} destination={activeDestination} hotelName={hotel || undefined} />
       )}
 
       {/* Delete confirmation modal */}
