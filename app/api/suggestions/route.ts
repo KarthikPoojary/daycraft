@@ -1,8 +1,8 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-const anthropic = new Anthropic()
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -25,15 +25,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to save trip' }, { status: 500 })
   }
 
-  const prompt = `You are an expert local travel advisor. Search the web for current, accurate recommendations for someone visiting ${destination}.
+  const prompt = `You are an expert local travel advisor. Give current, accurate recommendations for someone visiting ${destination}.
 
 Trip details:
 - Destination: ${destination}
 - Hotel / area: ${hotel_name || 'not specified'}
 - Dates: ${check_in} to ${check_out}
 - Preferences: ${preferences || 'no specific preferences'}
-
-Use web search to find up-to-date information about things to do, restaurants, and local tips that match the traveler's preferences and dates.
 
 Return ONLY a valid JSON object — no markdown fences, no extra text — with this exact structure:
 {
@@ -55,35 +53,11 @@ Use type "activity" for sights/experiences, "restaurant" for food/drink, "tip" f
 Include 3-4 activities, 2-3 restaurants, 2-3 tips. Tailor everything to the stated preferences.`
 
   try {
-    const messages: Anthropic.MessageParam[] = [{ role: 'user', content: prompt }]
-    let finalText = ''
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    const result = await model.generateContent(prompt)
+    const text = result.response.text()
 
-    for (let i = 0; i < 8; i++) {
-      const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4096,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' } as unknown as Anthropic.Tool],
-        messages,
-      })
-
-      if (response.stop_reason === 'end_turn') {
-        for (const block of response.content) {
-          if (block.type === 'text') finalText += block.text
-        }
-        break
-      }
-
-      messages.push({ role: 'assistant', content: response.content })
-
-      if (response.stop_reason === 'tool_use') {
-        const toolResults: Anthropic.ToolResultBlockParam[] = response.content
-          .filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
-          .map((b) => ({ type: 'tool_result', tool_use_id: b.id, content: '' }))
-        if (toolResults.length) messages.push({ role: 'user', content: toolResults })
-      }
-    }
-
-    const jsonMatch = finalText.match(/\{[\s\S]*\}/)
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) throw new Error('No JSON in response')
 
     const suggestions = JSON.parse(jsonMatch[0])
