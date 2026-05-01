@@ -50,6 +50,7 @@ export default function LoginPage() {
               required
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
               placeholder="you@example.com"
+              suppressHydrationWarning
             />
           </div>
           <div>
@@ -61,6 +62,7 @@ export default function LoginPage() {
               required
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
               placeholder="••••••••"
+              suppressHydrationWarning
             />
           </div>
 
