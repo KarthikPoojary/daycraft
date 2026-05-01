@@ -23,7 +23,7 @@ export default async function DashboardPage() {
           <div className="flex items-center gap-2">
             <span className="text-indigo-600 font-bold text-lg">✈</span>
             <span className="font-bold text-gray-900">Daycraft</span>
-            <span className="text-xs text-gray-400 font-medium">v1.0.0</span>
+            <span className="text-xs text-gray-400 font-medium">v1.1.0</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400 hidden sm:block">{user.email}</span>

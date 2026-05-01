@@ -132,6 +132,17 @@ middleware.ts           Auth guard — redirects unauthenticated page visits to 
 
 ## Changelog
 
+### v1.1.0 — 2026-05-01
+- **Redesigned itinerary** — full interactive day-plan timeline replacing the simple list
+  - Day total card: total duration, wrap time, stops/on-site/transit breakdown
+  - Day-at-a-glance scrubber: colour-coded horizontal bar; click any block to focus that stop
+  - "Leave hotel" time picker: set departure, all arrival/leave times cascade automatically
+  - Stop cards with map thumbnails (click → Google Maps), projected arrive/leave times, type chip
+  - Drag-to-reorder (grip handle desktop; Up/Down + long-press mobile)
+  - Duration popover: 6 presets + slider to edit time on site per stop
+- **Sequential travel labels** — travel time connectors now reference the previous stop, not always the hotel
+- **`proxy.ts` permanently removed** — added to `.gitignore` to prevent build conflicts with `middleware.ts`
+
 ### v1.0.0 — 2026-05-01
 - **Itinerary builder** — checkbox on each suggestion adds it to a live timeline with travel times and durations
 - **Suggestion caching** — AI results saved to DB; past trips load instantly without regenerating
