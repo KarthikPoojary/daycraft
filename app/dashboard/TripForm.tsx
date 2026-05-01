@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import type { Trip, SuggestionsResponse } from '@/lib/types'
 import SuggestionCards from './SuggestionCards'
 
-export default function TripForm({ trips }: { trips: Trip[] }) {
+export default function TripForm({ trips: initialTrips }: { trips: Trip[] }) {
+  const [trips, setTrips] = useState<Trip[]>(initialTrips)
   const [destination, setDestination] = useState('')
   const [hotel, setHotel] = useState('')
   const [checkIn, setCheckIn] = useState('')
@@ -15,6 +16,8 @@ export default function TripForm({ trips }: { trips: Trip[] }) {
   const [suggestions, setSuggestions] = useState<SuggestionsResponse | null>(null)
   const [activeDestination, setActiveDestination] = useState('')
   const [today, setToday] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<Trip | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     setToday(new Date().toISOString().split('T')[0])
@@ -43,6 +46,8 @@ export default function TripForm({ trips }: { trips: Trip[] }) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Something went wrong')
       setSuggestions(data.suggestions)
+      // Add the new trip (with cached suggestions) to the top of the list
+      setTrips(prev => [{ ...data.trip, suggestions: data.suggestions }, ...prev])
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to get suggestions')
     } finally {
@@ -56,11 +61,36 @@ export default function TripForm({ trips }: { trips: Trip[] }) {
     setCheckIn(trip.check_in)
     setCheckOut(trip.check_out)
     setPreferences(trip.preferences ?? '')
-    setSuggestions(null)
+    setActiveDestination(trip.destination)
     setError('')
+    // Load cached suggestions immediately — no API call needed
+    setSuggestions(trip.suggestions ?? null)
   }
 
-
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/trips/${deleteTarget.id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete')
+      setTrips(prev => prev.filter(t => t.id !== deleteTarget.id))
+      // Clear form if the deleted trip was the active one
+      if (destination === deleteTarget.destination) {
+        setSuggestions(null)
+        setDestination('')
+        setHotel('')
+        setCheckIn('')
+        setCheckOut('')
+        setPreferences('')
+        setActiveDestination('')
+      }
+    } catch {
+      setError('Failed to delete trip')
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -71,13 +101,21 @@ export default function TripForm({ trips }: { trips: Trip[] }) {
           </p>
           <div className="flex gap-2 flex-wrap">
             {trips.slice(0, 5).map((trip) => (
-              <button
-                key={trip.id}
-                onClick={() => loadPreviousTrip(trip)}
-                className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1.5 text-gray-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
-              >
-                {trip.destination}
-              </button>
+              <div key={trip.id} className="relative group">
+                <button
+                  onClick={() => loadPreviousTrip(trip)}
+                  className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1.5 pr-7 text-gray-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors"
+                >
+                  {trip.destination}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setDeleteTarget(trip) }}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full text-gray-300 hover:text-red-400 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all text-xs leading-none"
+                  title="Remove trip"
+                >
+                  ×
+                </button>
+              </div>
             ))}
           </div>
         </div>
@@ -180,6 +218,33 @@ export default function TripForm({ trips }: { trips: Trip[] }) {
 
       {suggestions && !loading && (
         <SuggestionCards data={suggestions} destination={activeDestination} />
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+            <h3 className="font-semibold text-gray-900 mb-2">Remove trip?</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              This will permanently delete <span className="font-medium text-gray-700">{deleteTarget.destination}</span> and its saved suggestions.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors disabled:opacity-60"
+              >
+                {deleting ? 'Removing…' : 'Remove'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

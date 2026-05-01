@@ -61,6 +61,9 @@ Include 3-4 activities, 2-3 restaurants, 2-3 tips. Tailor everything to the stat
     if (!jsonMatch) throw new Error('No JSON in response')
 
     const suggestions = JSON.parse(jsonMatch[0])
+
+    await supabase.from('trips').update({ suggestions }).eq('id', trip.id)
+
     return NextResponse.json({ trip, suggestions })
   } catch (err) {
     console.error('Suggestions error:', err)

@@ -7,6 +7,7 @@ export interface Trip {
   check_out: string
   preferences: string | null
   created_at: string
+  suggestions: SuggestionsResponse | null
 }
 
 export type SuggestionType = 'activity' | 'restaurant' | 'tip'
