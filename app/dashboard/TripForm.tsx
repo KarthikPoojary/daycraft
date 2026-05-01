@@ -203,6 +203,10 @@ export default function TripForm({ trips: initialTrips }: { trips: Trip[] }) {
           >
             {loading ? 'Finding the best suggestions…' : 'Get suggestions'}
           </button>
+
+          <p className="text-center text-xs text-gray-400 flex items-center justify-center gap-1">
+            Powered by <span className="font-semibold tracking-tight" style={{ color: '#F55036' }}>Groq</span>
+          </p>
         </form>
       </div>
 
