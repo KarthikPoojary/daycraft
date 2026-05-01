@@ -32,7 +32,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  if (!user && !isAuthPage) {
+  // Only redirect pages, not API routes (API routes handle their own 401)
+  if (!user && !isAuthPage && !pathname.startsWith('/api/')) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
@@ -40,6 +41,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Exclude /api/* routes — they handle their own auth — and static assets
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }
