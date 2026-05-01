@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { Suggestion, SuggestionsResponse } from '@/lib/types'
+import type { Suggestion, SuggestionsResponse, ItinerarySave } from '@/lib/types'
 import Itinerary from './Itinerary'
 
 const TYPE_CONFIG = {
@@ -14,10 +14,14 @@ export default function SuggestionCards({
   data,
   destination,
   hotelName,
+  tripId,
+  savedItinerary,
 }: {
   data: SuggestionsResponse
   destination: string
   hotelName?: string
+  tripId?: string | null
+  savedItinerary?: ItinerarySave | null
 }) {
   const [saved, setSaved] = useState<Set<string>>(new Set())
 
@@ -52,6 +56,8 @@ export default function SuggestionCards({
           hotelName={hotelName || 'Your hotel'}
           destination={destination}
           defaultStartMinutes={9 * 60}
+          tripId={tripId}
+          initialItinerary={savedItinerary}
         />
       )}
     </div>

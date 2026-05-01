@@ -16,6 +16,8 @@ export default function TripForm({ trips: initialTrips }: { trips: Trip[] }) {
   const [suggestions, setSuggestions] = useState<SuggestionsResponse | null>(null)
   const [activeDestination, setActiveDestination] = useState('')
   const [today, setToday] = useState('')
+  const [activeTripId, setActiveTripId] = useState<string | null>(null)
+  const [activeItinerary, setActiveItinerary] = useState<Trip['itinerary']>(null)
   const [deleteTarget, setDeleteTarget] = useState<Trip | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -46,7 +48,8 @@ export default function TripForm({ trips: initialTrips }: { trips: Trip[] }) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Something went wrong')
       setSuggestions(data.suggestions)
-      // Add the new trip (with cached suggestions) to the top of the list
+      setActiveTripId(data.trip.id)
+      setActiveItinerary(null)
       setTrips(prev => [{ ...data.trip, suggestions: data.suggestions }, ...prev])
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to get suggestions')
@@ -62,8 +65,9 @@ export default function TripForm({ trips: initialTrips }: { trips: Trip[] }) {
     setCheckOut(trip.check_out)
     setPreferences(trip.preferences ?? '')
     setActiveDestination(trip.destination)
+    setActiveTripId(trip.id)
+    setActiveItinerary(trip.itinerary ?? null)
     setError('')
-    // Load cached suggestions immediately — no API call needed
     setSuggestions(trip.suggestions ?? null)
   }
 
@@ -221,7 +225,14 @@ export default function TripForm({ trips: initialTrips }: { trips: Trip[] }) {
       )}
 
       {suggestions && !loading && (
-        <SuggestionCards data={suggestions} destination={activeDestination} hotelName={hotel || undefined} />
+        <SuggestionCards
+          key={activeTripId || 'new'}
+          data={suggestions}
+          destination={activeDestination}
+          hotelName={hotel || undefined}
+          tripId={activeTripId}
+          savedItinerary={activeItinerary}
+        />
       )}
 
       {/* Delete confirmation modal */}

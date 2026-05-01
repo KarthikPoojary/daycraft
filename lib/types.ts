@@ -1,3 +1,8 @@
+export interface ItinerarySave {
+  startMins: number
+  stops: Array<{ name: string; durationMins: number }>
+}
+
 export interface Trip {
   id: string
   user_id: string
@@ -8,6 +13,7 @@ export interface Trip {
   preferences: string | null
   created_at: string
   suggestions: SuggestionsResponse | null
+  itinerary: ItinerarySave | null
 }
 
 export type SuggestionType = 'activity' | 'restaurant' | 'tip'

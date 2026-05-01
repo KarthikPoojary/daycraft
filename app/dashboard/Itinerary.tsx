@@ -15,7 +15,7 @@
 //   />
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import type { Suggestion, SuggestionType } from '@/lib/types'
+import type { Suggestion, SuggestionType, ItinerarySave } from '@/lib/types'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface Stop {
@@ -33,6 +33,8 @@ interface ItineraryProps {
   destination?: string
   date?: string
   defaultStartMinutes?: number
+  tripId?: string | null
+  initialItinerary?: ItinerarySave | null
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -351,7 +353,7 @@ function DurationEditor({ minutes, onChange }: { minutes: number; onChange: (v: 
 // ─── Stop card ───────────────────────────────────────────────────────────────
 function StopCard({
   stop, index, total, arrival, leave, isDragging, isOver,
-  onDurationChange, onPickup, onMove, isFocus, onFocus,
+  onDurationChange, onPickup, onMove, isFocus, onFocus, destination,
 }: {
   stop: Stop
   index: number
@@ -365,6 +367,7 @@ function StopCard({
   onMove: (i: number, delta: number) => void
   isFocus: boolean
   onFocus: (i: number) => void
+  destination?: string
 }) {
   const cfg = TYPE_STYLE[stop.type] ?? TYPE_STYLE.activity
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -412,7 +415,7 @@ function StopCard({
         </button>
 
         <a
-          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.location || stop.name)}`}
+          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([stop.name, stop.location, destination].filter(Boolean).join(', '))}`}
           target="_blank"
           rel="noreferrer"
           onClick={(e) => e.stopPropagation()}
@@ -583,26 +586,61 @@ export default function Itinerary({
   destination,
   date,
   defaultStartMinutes = 9 * 60,
+  tripId,
+  initialItinerary,
 }: ItineraryProps) {
-  // Normalize Suggestion → Stop
-  const initialStops: Stop[] = useMemo(
-    () =>
-      incoming.map((s, i) => ({
-        id: `${i}-${s.name}`,
-        type: s.type,
-        name: s.name,
-        location: s.location,
-        durationMins: parseDuration(s.duration) || 60,
-        travelMins: parseDuration(s.travel_time) || 15,
-      })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [incoming.map((s) => s.name).join('|')]
-  )
+  // Normalize Suggestion → Stop, respecting saved order/durations if available
+  const initialStops: Stop[] = useMemo(() => {
+    const base = incoming.map((s, i): Stop => ({
+      id: `${i}-${s.name}`,
+      type: s.type,
+      name: s.name,
+      location: s.location,
+      durationMins: parseDuration(s.duration) || 60,
+      travelMins: parseDuration(s.travel_time) || 15,
+    }))
+    if (!initialItinerary?.stops?.length) return base
+    const byName = new Map(base.map((s) => [s.name, s]))
+    const ordered: Stop[] = []
+    const seen = new Set<string>()
+    for (const saved of initialItinerary.stops) {
+      const s = byName.get(saved.name)
+      if (s) { ordered.push({ ...s, durationMins: saved.durationMins }); seen.add(saved.name) }
+    }
+    for (const s of base) { if (!seen.has(s.name)) ordered.push(s) }
+    return ordered
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incoming.map((s) => s.name).join('|')])
 
   const [stops, setStops] = useState<Stop[]>(initialStops)
-  const [startMins, setStartMins] = useState(defaultStartMinutes)
+  const [startMins, setStartMins] = useState(initialItinerary?.startMins ?? defaultStartMinutes)
   const [showStartEdit, setShowStartEdit] = useState(false)
   const [focusIdx, setFocusIdx] = useState<number | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  async function saveItinerary() {
+    if (!tripId) return
+    setSaving(true)
+    try {
+      const itinerary: ItinerarySave = {
+        startMins,
+        stops: stops.map((s) => ({ name: s.name, durationMins: s.durationMins })),
+      }
+      const res = await fetch(`/api/trips/${tripId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itinerary }),
+      })
+      if (!res.ok) throw new Error('Failed to save')
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 2000)
+    } catch {
+      // silent — user can retry
+    } finally {
+      setSaving(false)
+    }
+  }
 
   // Sync if parent's saved set changes (add/remove)
   useEffect(() => {
@@ -702,17 +740,30 @@ export default function Itinerary({
 
   return (
     <div className="text-stone-900 antialiased">
-      {(destination || date) && (
-        <div className="flex items-baseline justify-between mb-3 px-1">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-stone-500">Itinerary</div>
+      <div className="flex items-end justify-between mb-3 px-1">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-stone-500">Itinerary</div>
+          {(destination || date) && (
             <h2 className="text-2xl sm:text-3xl tracking-tight mt-0.5 font-semibold">
               {destination}
               {date ? <span className="text-stone-400 font-normal"> · {date}</span> : null}
             </h2>
-          </div>
+          )}
         </div>
-      )}
+        {tripId && (
+          <button
+            onClick={saveItinerary}
+            disabled={saving}
+            className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded-xl border transition-colors disabled:opacity-60 ${
+              saveSuccess
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'bg-white border-stone-200 text-stone-700 hover:border-stone-400 hover:bg-stone-50'
+            }`}
+          >
+            {saving ? 'Saving…' : saveSuccess ? '✓ Saved' : 'Save itinerary'}
+          </button>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 mb-3 sm:mb-4">
         <DayTotal
@@ -764,6 +815,7 @@ export default function Itinerary({
                   onMove={moveBy}
                   isFocus={focusIdx === i}
                   onFocus={(idx) => setFocusIdx((cur) => (cur === idx ? null : idx))}
+                  destination={destination}
                 />
                 {overIdx === i && dragIdx !== null && dragIdx !== i && (
                   <div className="absolute -top-1 left-2 right-2 h-0.5 rounded-full bg-stone-900"/>
